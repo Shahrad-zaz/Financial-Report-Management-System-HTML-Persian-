@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سامانه مدیریت گزارشات مالی</title>
+  <meta name="description" content="سامانه هوشمند مدیریت و ثبت گزارشات مالی با تقویم شمسی، خروجی اکسل و تصویر" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#6c63ff;--primary-light:#8b85ff;--primary-dark:#4c45cc;
+      --secondary:#00d4aa;--secondary-dark:#00a888;
+      --accent:#ff6b6b;--accent-dark:#e05050;
+      --bg-dark:#0d0d1a;--bg-card:#13132b;--bg-surface:#1a1a35;--bg-input:#111128;
+      --border:rgba(108,99,255,0.25);--border-focus:rgba(108,99,255,0.7);
+      --text-primary:#f0efff;--text-secondary:#a8a6d3;--text-muted:#6b698f;
+      --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
+      --glass:rgba(255,255,255,0.03);--glass-hover:rgba(255,255,255,0.06);
+      --shadow-glow:0 0 30px rgba(108,99,255,0.15);
+      --shadow-card:0 8px 32px rgba(0,0,0,0.4);
+      --radius:16px;--radius-sm:8px;--radius-xs:6px;
+      --transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    html{scroll-behavior:smooth;}
+    body{
+      font-family:'Vazirmatn','Tahoma',sans-serif;
+      background:var(--bg-dark);color:var(--text-primary);
+      min-height:100vh;direction:rtl;overflow-x:hidden;line-height:1.7;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse at 20% 20%,rgba(108,99,255,0.12) 0%,transparent 60%),
+        radial-gradient(ellipse at 80% 80%,rgba(0,212,170,0.08) 0%,transparent 60%),
+        radial-gradient(ellipse at 50% 50%,rgba(108,99,255,0.05) 0%,transparent 70%);
+    }
+    .app-header{
+      position:relative;z-index:10;padding:1.8rem 2.5rem 1.4rem;
+      background:linear-gradient(180deg,rgba(13,13,26,0.98) 0%,transparent 100%);
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+    }
+    .header-brand{display:flex;align-items:center;gap:1rem;}
+    .brand-icon{
+      width:52px;height:52px;border-radius:var(--radius-sm);
+      background:linear-gradient(135deg,var(--primary),var(--secondary));
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.6rem;flex-shrink:0;
+      box-shadow:0 0 20px rgba(108,99,255,0.4);
+    }
+    .brand-text h1{
+      font-size:1.45rem;font-weight:800;line-height:1.3;
+      background:linear-gradient(135deg,var(--primary-light),var(--secondary));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .brand-text p{font-size:0.78rem;color:var(--text-muted);font-weight:400;margin-top:2px;}
+    .date-badge{
+      background:var(--glass);border:1px solid var(--border);border-radius:50px;
+      padding:0.45rem 1rem;font-size:0.82rem;color:var(--text-secondary);
+      display:flex;align-items:center;gap:0.4rem;
+    }
+    .app-main{
+      position:relative;z-index:5;padding:2rem 2.5rem;
+      max-width:1600px;margin:0 auto;
+    }
+    .card{
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:var(--radius);box-shadow:var(--shadow-card);
+      overflow:hidden;position:relative;
+    }
+    .card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--primary),var(--secondary),var(--primary));
+      background-size:200% 100%;animation:shimmer 3s linear infinite;
+    }
+    @keyframes shimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
+    .card-header{
+      padding:1.3rem 1.8rem;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:0.75rem;
+      background:rgba(108,99,255,0.05);
+    }
+    .card-header-icon{font-size:1.2rem;}
+    .card-header p{font-size:0.78rem;color:var(--text-muted);margin-top:2px;}
+    /* Editable title */
+    .title-row{display:flex;align-items:center;gap:0.5rem;}
+    .table-title-display{
+      font-size:1rem;font-weight:700;color:var(--text-primary);
+      border:1.5px dashed transparent;border-radius:var(--radius-xs);
+      padding:0.2rem 0.5rem;cursor:pointer;transition:var(--transition);
+      min-width:40px;
+    }
+    .table-title-display:hover{
+      border-color:rgba(108,99,255,0.4);background:rgba(108,99,255,0.07);
+    }
+    .table-title-input{
+      font-size:1rem;font-weight:700;font-family:'Vazirmatn',sans-serif;
+      background:rgba(108,99,255,0.1);border:1.5px solid var(--primary);
+      border-radius:var(--radius-xs);color:var(--text-primary);
+      padding:0.2rem 0.5rem;outline:none;direction:rtl;
+      min-width:220px;display:none;
+    }
+    .btn-edit-title{
+      background:none;border:none;cursor:pointer;
+      color:var(--text-muted);font-size:0.85rem;
+      padding:0.2rem 0.35rem;border-radius:4px;
+      transition:var(--transition);line-height:1;
+    }
+    .btn-edit-title:hover{color:var(--primary-light);background:rgba(108,99,255,0.1);}
+    .table-wrapper{
+      overflow-x:auto;padding:1rem;
+      scrollbar-width:thin;scrollbar-color:var(--primary) transparent;
+    }
+    .table-wrapper::-webkit-scrollbar{height:5px;}
+    .table-wrapper::-webkit-scrollbar-thumb{background:var(--primary);border-radius:50px;}
+    #financial-table{
+      width:100%;border-collapse:separate;border-spacing:0 6px;min-width:940px;
+    }
+    #financial-table thead th{
+      padding:0.8rem 0.9rem;font-size:0.8rem;font-weight:700;color:var(--text-muted);
+      text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);
+    }
+    .table-row{
+      background:var(--bg-surface);transition:var(--transition);
+      animation:rowIn 0.3s cubic-bezier(0.4,0,0.2,1) both;
+    }
+    @keyframes rowIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+    .table-row:hover{background:var(--glass-hover);box-shadow:0 4px 20px rgba(108,99,255,0.1);}
+    .table-row td{padding:0.6rem 0.75rem;vertical-align:middle;}
+    .table-row td:first-child{border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
+    .table-row td:last-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm);}
+    .row-number{
+      font-size:0.9rem;font-weight:700;color:var(--primary-light);
+      background:rgba(108,99,255,0.12);border-radius:var(--radius-xs);
+      padding:0.3rem 0.5rem;display:inline-flex;align-items:center;justify-content:center;min-width:36px;
+    }
+    .cell-input{
+      width:100%;background:var(--bg-input);border:1.5px solid rgba(108,99,255,0.2);
+      border-radius:var(--radius-xs);color:var(--text-primary);
+      font-family:'Vazirmatn',sans-serif;font-size:0.875rem;
+      padding:0.45rem 0.7rem;transition:var(--transition);outline:none;direction:rtl;
+    }
+    .cell-input:focus{
+      border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,99,255,0.2);
+      background:rgba(108,99,255,0.08);
+    }
+    .cell-input::placeholder{color:var(--text-muted);font-size:0.8rem;}
+    .input-date{min-width:130px;max-width:150px;cursor:pointer;}
+    .input-desc{min-width:220px;}
+    .input-amount{min-width:130px;max-width:155px;text-align:left;direction:ltr;}
+    .input-balance{
+      min-width:130px;max-width:155px;
+      background:rgba(0,212,170,0.07) !important;
+      border-color:rgba(0,212,170,0.2) !important;
+      color:var(--secondary) !important;
+      font-weight:700;cursor:default;text-align:left;direction:ltr;
+    }
+    .input-balance.negative{
+      background:rgba(239,68,68,0.07) !important;
+      border-color:rgba(239,68,68,0.2) !important;
+      color:var(--danger) !important;
+    }
+    .actions-cell{white-space:nowrap;text-align:center;}
+    .btn-add-row,.btn-del-row{
+      width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
+      font-size:1.1rem;font-weight:700;line-height:1;
+      display:inline-flex;align-items:center;justify-content:center;transition:var(--transition);
+    }
+    .btn-add-row{
+      background:linear-gradient(135deg,rgba(0,212,170,0.2),rgba(0,212,170,0.35));
+      color:var(--secondary);border:1.5px solid rgba(0,212,170,0.4);margin-left:4px;
+    }
+    .btn-add-row:hover{
+      background:linear-gradient(135deg,var(--secondary-dark),var(--secondary));
+      color:#fff;box-shadow:0 0 12px rgba(0,212,170,0.5);transform:scale(1.12);
+    }
+    .btn-del-row{
+      background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(239,68,68,0.3));
+      color:var(--danger);border:1.5px solid rgba(239,68,68,0.35);
+    }
+    .btn-del-row:hover{
+      background:linear-gradient(135deg,var(--accent-dark),var(--accent));
+      color:#fff;box-shadow:0 0 12px rgba(239,68,68,0.5);transform:scale(1.12);
+    }
+    .footer-section{margin-top:1.5rem;}
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;}
+    .summary-card{
+      background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1.5rem 1.8rem;position:relative;overflow:hidden;transition:var(--transition);
+    }
+    .summary-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
+    .summary-card.income::after{background:linear-gradient(90deg,var(--secondary),var(--secondary-dark));}
+    .summary-card.expense::after{background:linear-gradient(90deg,var(--accent),var(--accent-dark));}
+    .summary-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-glow);}
+    .summary-card-label{
+      font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;
+      display:flex;align-items:center;gap:0.4rem;
+    }
+    .summary-card.income .summary-card-label{color:var(--secondary);}
+    .summary-card.expense .summary-card-label{color:var(--accent);}
+    .summary-card-value{font-size:1.7rem;font-weight:800;direction:ltr;text-align:left;}
+    .summary-card.income .summary-card-value{color:var(--secondary);}
+    .summary-card.expense .summary-card-value{color:var(--accent);}
+    .summary-card-sub{font-size:0.72rem;color:var(--text-muted);margin-top:0.25rem;}
+    .summary-bg-icon{
+      position:absolute;top:50%;left:1.2rem;transform:translateY(-50%);
+      font-size:4rem;opacity:0.06;line-height:1;
+    }
+    .export-section{
+      margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;justify-content:flex-end;
+    }
+    .btn-export{
+      display:inline-flex;align-items:center;gap:0.6rem;
+      padding:0.8rem 1.8rem;border-radius:50px;border:none;cursor:pointer;
+      font-family:'Vazirmatn',sans-serif;font-size:0.9rem;font-weight:700;
+      transition:var(--transition);position:relative;overflow:hidden;
+    }
+    .btn-export:hover{transform:translateY(-2px);}
+    .btn-export:active{transform:translateY(0);}
+    .btn-excel{
+      background:linear-gradient(135deg,#1d6f42,#107c41);color:#fff;
+      box-shadow:0 4px 15px rgba(29,111,66,0.4);
+    }
+    .btn-excel:hover{box-shadow:0 8px 25px rgba(29,111,66,0.55);}
+    .btn-png{
+      background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;
+      box-shadow:0 4px 15px rgba(108,99,255,0.4);
+    }
+    .btn-png:hover{box-shadow:0 8px 25px rgba(108,99,255,0.55);}
+    .btn-icon{font-size:1.1rem;}
+    .spinner{
+      display:inline-block;width:16px;height:16px;
+      border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;
+      border-radius:50%;animation:spin 0.7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .toast-container{
+      position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+      z-index:9999;display:flex;flex-direction:column-reverse;gap:0.5rem;align-items:center;
+    }
+    .toast{
+      background:var(--bg-card);border:1px solid var(--border);border-radius:50px;
+      padding:0.6rem 1.4rem;font-size:0.85rem;color:var(--text-primary);
+      box-shadow:var(--shadow-card);display:flex;align-items:center;gap:0.5rem;
+      animation:toastIn 0.35s cubic-bezier(0.4,0,0.2,1) both,toastOut 0.35s 2.5s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+    @keyframes toastIn{from{opacity:0;transform:translateY(15px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+    @keyframes toastOut{from{opacity:1;transform:translateY(0) scale(1);}to{opacity:0;transform:translateY(15px) scale(0.95);}}
+    .section-divider{
+      height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:2rem 0;
+    }
+    /* Datepicker overrides */
+    .datepicker-plot-area{
+      font-family:'Vazirmatn',sans-serif !important;
+      background:var(--bg-card) !important;border:1px solid var(--border) !important;
+      border-radius:var(--radius) !important;box-shadow:var(--shadow-card) !important;direction:rtl;
+    }
+    .datepicker-plot-area .header-title{color:var(--text-primary) !important;font-family:'Vazirmatn',sans-serif !important;}
+    .datepicker-plot-area .day-content{color:var(--text-secondary) !important;}
+    .datepicker-plot-area .selected .day-content{
+      background:var(--primary) !important;color:#fff !important;border-radius:var(--radius-xs) !important;
+    }
+    .datepicker-plot-area .today .day-content{border:1px solid var(--primary) !important;border-radius:var(--radius-xs) !important;}
+    @media(max-width:768px){
+      .app-header,.app-main{padding:1.25rem 1rem;}
+      .brand-text h1{font-size:1.15rem;}
+      .header-meta{display:none;}
+      .export-section{justify-content:center;}
+      .btn-export{flex:1;justify-content:center;min-width:140px;}
+      .summary-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-icon">📊</div>
+      <div class="brand-text">
+        <h1>سامانه مدیریت گزارشات مالی</h1>
+        <p>ثبت، پیگیری و تحلیل تراکنش‌های مالی</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="date-badge">📅 <span id="current-date-display">---</span></div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div id="capture-area">
+      <div class="card" style="margin-bottom:0;">
+        <div class="card-header">
+          <span class="card-header-icon">📋</span>
+          <div style="flex:1;">
+            <div class="title-row">
+              <span
+                class="table-title-display"
+                id="table-title-display"
+                title="برای ویرایش کلیک کنید"
+                onclick="startEditTitle()"
+              >جدول گزارش مالی</span>
+              <input
+                type="text"
+                class="table-title-input"
+                id="table-title-input"
+                value="جدول گزارش مالی"
+                onblur="finishEditTitle()"
+                onkeydown="if(event.key==='Enter'||event.key==='Escape')this.blur()"
+                aria-label="ویرایش عنوان جدول"
+              />
+              <button class="btn-edit-title" onclick="startEditTitle()" title="ویرایش عنوان" aria-label="ویرایش عنوان">✏️</button>
+            </div>
+            <p>تمام تراکنش‌ها و محاسبات موجودی به‌صورت خودکار</p>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="financial-table" aria-label="جدول گزارش مالی">
+            <thead>
+              <tr>
+                <th style="width:52px;">ردیف</th>
+                <th style="width:155px;">تاریخ</th>
+                <th>شرح</th>
+                <th style="width:165px;">مبلغ واریزی (ریال)</th>
+                <th style="width:165px;">مبلغ هزینه (ریال)</th>
+                <th style="width:165px;">مبلغ مانده (ریال)</th>
+                <th style="width:82px;text-align:center;">عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="footer-section">
+        <div class="summary-grid">
+          <div class="summary-card income">
+            <div class="summary-bg-icon">💰</div>
+            <div class="summary-card-label">✅ جمع کل واریزی‌ها</div>
+            <div class="summary-card-value" id="total-income">0</div>
+            <div class="summary-card-sub">مجموع تمام مبالغ واریزی شده</div>
+          </div>
+          <div class="summary-card expense">
+            <div class="summary-bg-icon">💸</div>
+            <div class="summary-card-label">❌ جمع کل هزینه‌ها</div>
+            <div class="summary-card-value" id="total-expense">0</div>
+            <div class="summary-card-sub">مجموع تمام مبالغ هزینه شده</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="export-section">
+      <button class="btn-export btn-excel" id="btn-export-excel" onclick="exportToExcel()" aria-label="خروجی اکسل">
+        <span class="btn-icon">📥</span> خروجی اکسل
+      </button>
+      <button class="btn-export btn-png" id="btn-export-png" onclick="exportToPng()" aria-label="خروجی تصویر">
+        <span class="btn-icon">🖼️</span> خروجی تصویر
+      </button>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script>
+    var rowCounter = 0;
+    var rows = [];
+
+    function toFA(num) {
+      return Number(num).toLocaleString('fa-IR');
+    }
+
+    function formatInputLive(input) {
+      var raw = input.value.replace(/[^0-9]/g, '');
+      if (!raw) { input.value = ''; return; }
+      input.value = parseInt(raw, 10).toLocaleString('en-US');
+    }
+
+    function getRawValue(input) {
+      if (!input) return 0;
+      var raw = input.value.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+      return raw ? parseFloat(raw) : 0;
+    }
+
+    function formatNumber(n) {
+      if (n === 0) return '0';
+      return Number(n).toLocaleString('en-US');
+    }
+
+    function showToast(msg, icon) {
+      icon = icon || '✅';
+      var container = document.getElementById('toast-container');
+      var toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = '<span>' + icon + '</span> <span>' + msg + '</span>';
+      container.appendChild(toast);
+      setTimeout(function() { toast.remove(); }, 3000);
+    }
+
+    function addRow(afterRowId) {
+      rowCounter++;
+      var id = 'row-' + rowCounter;
+
+      var tr = document.createElement('tr');
+      tr.className = 'table-row';
+      tr.id = id;
+
+      tr.innerHTML =
+        '<td><span class="row-number" id="num-' + id + '">1</span></td>' +
+        '<td><input type="text" class="cell-input input-date" id="date-' + id + '" placeholder="۱۴۰۳/۰۱/۰۱" autocomplete="off" aria-label="تاریخ" /></td>' +
+        '<td><input type="text" class="cell-input input-desc" id="desc-' + id + '" placeholder="شرح تراکنش را وارد کنید..." aria-label="شرح" /></td>' +
+        '<td><input type="text" class="cell-input input-amount" id="income-' + id + '" placeholder="0" inputmode="numeric" aria-label="مبلغ واریزی" /></td>' +
+        '<td><input type="text" class="cell-input input-amount" id="expense-' + id + '" placeholder="0" inputmode="numeric" aria-label="مبلغ هزینه" /></td>' +
+        '<td><input type="text" class="cell-input input-balance" id="balance-' + id + '" readonly tabindex="-1" value="0" aria-label="مبلغ مانده" /></td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn-add-row" onclick="addRow(\'' + id + '\')" title="افزودن سطر جدید" aria-label="افزودن سطر">+</button>' +
+          '<button class="btn-del-row" onclick="deleteRow(\'' + id + '\')" title="حذف این سطر" aria-label="حذف سطر">&#x2212;</button>' +
+        '</td>';
+
+      var tbody = document.getElementById('table-body');
+
+      if (afterRowId) {
+        var afterEl = document.getElementById(afterRowId);
+        var afterIndex = rows.indexOf(afterRowId);
+        rows.splice(afterIndex + 1, 0, id);
+        afterEl.insertAdjacentElement('afterend', tr);
+      } else {
+        rows.push(id);
+        tbody.appendChild(tr);
+      }
+
+      var incomeInput = document.getElementById('income-' + id);
+      var expenseInput = document.getElementById('expense-' + id);
+
+      incomeInput.addEventListener('input', function() { formatInputLive(incomeInput); recalcAll(); });
+      expenseInput.addEventListener('input', function() { formatInputLive(expenseInput); recalcAll(); });
+
+      initDatepicker('date-' + id);
+      renumberRows();
+      recalcAll();
+
+      setTimeout(function() {
+        var d = document.getElementById('desc-' + id);
+        if (d) d.focus();
+      }, 80);
+    }
+
+    function deleteRow(id) {
+      var index = rows.indexOf(id);
+      if (index === -1) return;
+      if (rows.length === 1) {
+        showToast('حداقل یک سطر باید وجود داشته باشد.', '⚠️');
+        return;
+      }
+      rows.splice(index, 1);
+      var el = document.getElementById(id);
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-8px)';
+      el.style.transition = 'all 0.25s ease';
+      setTimeout(function() { el.remove(); renumberRows(); recalcAll(); }, 260);
+    }
+
+    function renumberRows() {
+      rows.forEach(function(id, idx) {
+        var numEl = document.getElementById('num-' + id);
+        if (numEl) numEl.textContent = toFA(idx + 1);
+        var tr = document.getElementById(id);
+        if (!tr) return;
+        var delBtn = tr.querySelector('.btn-del-row');
+        if (delBtn) delBtn.style.display = idx === 0 ? 'none' : 'inline-flex';
+      });
+    }
+
+    function recalcAll() {
+      var prevBalance = 0;
+      var totalIncome = 0;
+      var totalExpense = 0;
+
+      rows.forEach(function(id, idx) {
+        var incomeInput = document.getElementById('income-' + id);
+        var expenseInput = document.getElementById('expense-' + id);
+        var balanceInput = document.getElementById('balance-' + id);
+
+        var income = getRawValue(incomeInput);
+        var expense = getRawValue(expenseInput);
+
+        var balance;
+        if (idx === 0) {
+          balance = income - expense;
+        } else {
+          balance = prevBalance + income - expense;
+        }
+
+        prevBalance = balance;
+        totalIncome += income;
+        totalExpense += expense;
+
+        if (balanceInput) {
+          balanceInput.value = formatNumber(balance);
+          if (balance < 0) {
+            balanceInput.classList.add('negative');
+          } else {
+            balanceInput.classList.remove('negative');
+          }
+        }
+      });
+
+      var tiEl = document.getElementById('total-income');
+      var teEl = document.getElementById('total-expense');
+      if (tiEl) tiEl.textContent = formatNumber(totalIncome);
+      if (teEl) teEl.textContent = formatNumber(totalExpense);
+    }
+
+    function initDatepicker(inputId) {
+      try {
+        $('#' + inputId).persianDatepicker({
+          format: 'YYYY/MM/DD',
+          autoClose: true,
+          initialValue: false,
+          observer: true,
+          calendar: { persian: { locale: 'fa' } },
+          onSelect: function() { recalcAll(); },
+          calendarType: 'persian',
+          timePicker: { enabled: false },
+        });
+      } catch(e) {
+        console.warn('Datepicker init failed:', e);
+      }
+    }
+
+    function exportToExcel() {
+      var btn = document.getElementById('btn-export-excel');
+      btn.innerHTML = '<span class="spinner"></span> در حال آماده‌سازی...';
+      btn.disabled = true;
+      setTimeout(function() {
+        try {
+          var wb = XLSX.utils.book_new();
+          var headers = ['ردیف', 'تاریخ', 'شرح', 'مبلغ واریزی', 'مبلغ هزینه', 'مبلغ مانده'];
+          var data = [headers];
+          rows.forEach(function(id, idx) {
+            var date = document.getElementById('date-' + id) ? document.getElementById('date-' + id).value : '';
+            var desc = document.getElementById('desc-' + id) ? document.getElementById('desc-' + id).value : '';
+            var income = getRawValue(document.getElementById('income-' + id));
+            var expense = getRawValue(document.getElementById('expense-' + id));
+            var balance = getRawValue(document.getElementById('balance-' + id));
+            data.push([idx + 1, date, desc, income, expense, balance]);
+          });
+          var totalIncome = rows.reduce(function(s, id) { return s + getRawValue(document.getElementById('income-' + id)); }, 0);
+          var totalExpense = rows.reduce(function(s, id) { return s + getRawValue(document.getElementById('expense-' + id)); }, 0);
+          data.push([]);
+          data.push(['', '', 'جمع کل', totalIncome, totalExpense, '']);
+          var ws = XLSX.utils.aoa_to_sheet(data);
+          ws['!cols'] = [{wch:8},{wch:14},{wch:40},{wch:18},{wch:18},{wch:18}];
+          if (!ws['!sheetView']) ws['!sheetView'] = [];
+          ws['!sheetView'] = [{rightToLeft: true}];
+          XLSX.utils.book_append_sheet(wb, ws, 'گزارش مالی');
+          XLSX.writeFile(wb, 'financial-report.xlsx');
+          showToast('فایل اکسل با موفقیت دانلود شد!', '📥');
+        } catch(e) {
+          showToast('خطا: ' + e.message, '❌');
+        }
+        btn.innerHTML = '<span class="btn-icon">📥</span> خروجی اکسل';
+        btn.disabled = false;
+      }, 100);
+    }
+
+    /* ---- Editable Title ---- */
+    function startEditTitle() {
+      var disp = document.getElementById('table-title-display');
+      var inp  = document.getElementById('table-title-input');
+      inp.value = disp.textContent.trim();
+      disp.style.display = 'none';
+      inp.style.display  = 'inline-block';
+      inp.focus();
+      inp.select();
+    }
+    function finishEditTitle() {
+      var disp = document.getElementById('table-title-display');
+      var inp  = document.getElementById('table-title-input');
+      var val  = inp.value.trim() || 'جدول گزارش مالی';
+      disp.textContent   = val;
+      inp.style.display  = 'none';
+      disp.style.display = 'inline-block';
+    }
+
+    /* ---- PNG Export: Canvas-drawn ledger style ---- */
+    function exportToPng() {
+      var btn = document.getElementById('btn-export-png');
+      btn.innerHTML = '<span class="spinner"></span> در حال رندر...';
+      btn.disabled = true;
+
+      setTimeout(function() {
+        try {
+          drawLedgerCanvas();
+          showToast('تصویر با موفقیت دانلود شد!', '🖼️');
+        } catch(e) {
+          showToast('خطا: ' + e.message, '❌');
+          console.error(e);
+        }
+        btn.innerHTML = '<span class="btn-icon">🖼️</span> خروجی تصویر';
+        btn.disabled = false;
+      }, 60);
+    }
+
+    function drawLedgerCanvas() {
+      var title = document.getElementById('table-title-display').textContent.trim();
+
+      /* ---- Collect data ---- */
+      var dataRows = [];
+      rows.forEach(function(id, idx) {
+        dataRows.push([
+          toFA(idx + 1),
+          (document.getElementById('date-'    + id) || {}).value || '',
+          (document.getElementById('desc-'    + id) || {}).value || '',
+          formatNumber(getRawValue(document.getElementById('income-'  + id))),
+          formatNumber(getRawValue(document.getElementById('expense-' + id))),
+          (document.getElementById('balance-' + id) || {}).value || '0',
+        ]);
+      });
+
+      var totalIncome  = rows.reduce(function(s,id){ return s + getRawValue(document.getElementById('income-'  + id)); }, 0);
+      var totalExpense = rows.reduce(function(s,id){ return s + getRawValue(document.getElementById('expense-' + id)); }, 0);
+
+      var headers = ['ردیف','تاریخ','شرح','مبلغ واریزی','مبلغ هزینه','مبلغ مانده'];
+
+      /* ---- Layout constants ---- */
+      var SCALE   = 2;                  // retina
+      var PAD     = 28 * SCALE;
+      var ROW_H   = 34 * SCALE;
+      var HDR_H   = 40 * SCALE;
+      var TITLE_H = 56 * SCALE;
+      var TOTAL_H = 38 * SCALE;
+      var FOOT_H  = 52 * SCALE;
+
+      // Column widths (logical, will be scaled)
+      var colW = [46, 110, 0, 130, 130, 130]; // 0 = flex for شرح
+      var totalFixed = 46+110+130+130+130;
+      // Canvas total width
+      var CANVAS_W_LOG = 900;
+      colW[2] = CANVAS_W_LOG - totalFixed - (PAD/SCALE)*2 - 5*1; // 5 borders
+
+      var W = (CANVAS_W_LOG + (PAD/SCALE)*2) * SCALE;
+      var totalRows = dataRows.length;
+      var H = TITLE_H + HDR_H + totalRows * ROW_H + TOTAL_H + FOOT_H + PAD;
+
+      var canvas = document.createElement('canvas');
+      canvas.width  = W;
+      canvas.height = H;
+      var ctx = canvas.getContext('2d');
+
+      /* ---- Background ---- */
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+
+      /* ---- Fonts ---- */
+      var FONT_BASE = 13 * SCALE;
+      var FONT_HDR  = 13 * SCALE;
+      var FONT_TITLE= 17 * SCALE;
+
+      /* ---- Colors ---- */
+      var C_BORDER   = '#1a1a2e';
+      var C_HDR_BG   = '#1a1a2e';
+      var C_HDR_FG   = '#ffffff';
+      var C_ROW_ALT  = '#f5f5fc';
+      var C_ROW_EVN  = '#ffffff';
+      var C_TEXT     = '#111111';
+      var C_NEG      = '#cc2200';
+      var C_TOT_BG   = '#1a1a2e';
+      var C_TOT_FG   = '#ffffff';
+      var C_TITLE_BG = '#1a1a2e';
+
+      /* ---- Helper: draw cell ---- */
+      // x,y,w,h are already in canvas pixels
+      function cell(x, y, w, h, bgColor, text, textColor, fontPx, align) {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(x, y, w, h);
+        // border
+        ctx.strokeStyle = C_BORDER;
+        ctx.lineWidth   = SCALE;
+        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+        // text
+        if (text === null || text === undefined || text === '') return;
+        ctx.fillStyle  = textColor || C_TEXT;
+        ctx.font       = 'bold ' + fontPx + 'px Vazirmatn, Tahoma, Arial';
+        ctx.textAlign  = align || 'right';
+        ctx.textBaseline = 'middle';
+        ctx.direction  = 'rtl';
+        var tx = align === 'center' ? x + w/2 : align === 'left' ? x + 10*SCALE : x + w - 10*SCALE;
+        ctx.fillText(text, tx, y + h/2);
+      }
+
+      /* ---- Compute column pixel positions (RTL: right → left) ---- */
+      // columns order in RTL: ردیف | تاریخ | شرح | واریزی | هزینه | مانده
+      // But visually RTL means rightmost col is first drawn at x=PAD
+      var colWidthsPx = colW.map(function(w){ return w * SCALE; });
+      // x positions from right (RTL). We draw from left edge = PAD, but flip order:
+      // RTL visual order: مانده(5) | هزینه(4) | واریزی(3) | شرح(2) | تاریخ(1) | ردیف(0)
+      // We want: ردیف on right, مانده on left — matching the ledger photo
+      // So draw columns left-to-right as: مانده, هزینه, واریزی, شرح, تاریخ, ردیف
+      var rtlOrder = [5, 4, 3, 2, 1, 0];
+      var xPositions = [];
+      var cx = PAD;
+      for (var ci = 0; ci < rtlOrder.length; ci++) {
+        xPositions[rtlOrder[ci]] = cx;
+        cx += colWidthsPx[rtlOrder[ci]];
+      }
+      var TABLE_W = cx - PAD;
+
+      /* ---- TITLE ROW ---- */
+      ctx.fillStyle = C_TITLE_BG;
+      ctx.fillRect(PAD, 0, TABLE_W, TITLE_H);
+      ctx.strokeStyle = C_BORDER;
+      ctx.lineWidth   = SCALE;
+      ctx.strokeRect(PAD + 0.5, 0.5, TABLE_W - 1, TITLE_H - 1);
+      ctx.fillStyle    = '#ffffff';
+      ctx.font         = 'bold ' + FONT_TITLE + 'px Vazirmatn, Tahoma, Arial';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction    = 'rtl';
+      ctx.fillText(title, PAD + TABLE_W / 2, TITLE_H / 2);
+
+      /* ---- HEADER ROW ---- */
+      var headerLabels = ['مبلغ مانده (ریال)','مبلغ هزینه (ریال)','مبلغ واریزی (ریال)','شرح','تاریخ','ردیف'];
+      var hY = TITLE_H;
+      for (var hi = 0; hi < rtlOrder.length; hi++) {
+        var colIdx = rtlOrder[hi];
+        cell(
+          xPositions[colIdx], hY,
+          colWidthsPx[colIdx], HDR_H,
+          C_HDR_BG, headerLabels[hi], C_HDR_FG, FONT_HDR, 'center'
+        );
+      }
+
+      /* ---- DATA ROWS ---- */
+      for (var ri = 0; ri < dataRows.length; ri++) {
+        var rY   = TITLE_H + HDR_H + ri * ROW_H;
+        var rBg  = (ri % 2 === 0) ? C_ROW_EVN : C_ROW_ALT;
+        var rData= dataRows[ri]; // [ردیف, تاریخ, شرح, واریزی, هزینه, مانده]
+        var alignForCol = ['center','center','right','center','center','center'];
+        // check negative balance
+        var balVal = parseFloat((rData[5]||'0').replace(/,/g,''));
+        var balColor = balVal < 0 ? C_NEG : C_TEXT;
+
+        for (var ci2 = 0; ci2 < rtlOrder.length; ci2++) {
+          var colIdx2  = rtlOrder[ci2];
+          var txtColor = (colIdx2 === 5) ? balColor : C_TEXT;
+          cell(
+            xPositions[colIdx2], rY,
+            colWidthsPx[colIdx2], ROW_H,
+            rBg, rData[colIdx2], txtColor, FONT_BASE, alignForCol[colIdx2]
+          );
+        }
+      }
+
+      /* ---- TOTALS ROW ---- */
+      var tY = TITLE_H + HDR_H + totalRows * ROW_H;
+      for (var ci3 = 0; ci3 < rtlOrder.length; ci3++) {
+        var colIdx3 = rtlOrder[ci3];
+        var totLabel = '';
+        if (colIdx3 === 2) totLabel = 'جمع کل';
+        if (colIdx3 === 3) totLabel = formatNumber(totalIncome);
+        if (colIdx3 === 4) totLabel = formatNumber(totalExpense);
+        cell(
+          xPositions[colIdx3], tY,
+          colWidthsPx[colIdx3], TOTAL_H,
+          C_TOT_BG, totLabel, C_TOT_FG, FONT_HDR, 'center'
+        );
+      }
+
+      /* ---- FOOTER: Total income / expense boxes ---- */
+      var fY = tY + TOTAL_H + 10*SCALE;
+      var boxW = (TABLE_W - SCALE) / 2;
+
+      // Income box (teal)
+      ctx.fillStyle = '#00a888';
+      ctx.fillRect(PAD + boxW + SCALE, fY, boxW, FOOT_H);
+      ctx.strokeStyle = C_BORDER; ctx.lineWidth = SCALE;
+      ctx.strokeRect(PAD + boxW + SCALE + 0.5, fY + 0.5, boxW - 1, FOOT_H - 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold ' + FONT_BASE + 'px Vazirmatn, Tahoma, Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
+      ctx.fillText('جمع کل واریزی‌ها: ' + formatNumber(totalIncome), PAD + boxW + SCALE + boxW/2, fY + FOOT_H/2);
+
+      // Expense box (red)
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(PAD, fY, boxW, FOOT_H);
+      ctx.strokeStyle = C_BORDER; ctx.lineWidth = SCALE;
+      ctx.strokeRect(PAD + 0.5, fY + 0.5, boxW - 1, FOOT_H - 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('جمع کل هزینه‌ها: ' + formatNumber(totalExpense), PAD + boxW/2, fY + FOOT_H/2);
+
+      /* ---- Download ---- */
+      var link = document.createElement('a');
+      link.download = 'financial-report.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function updateCurrentDate() {
+      var el = document.getElementById('current-date-display');
+      if (!el) return;
+      try {
+        el.textContent = new Date().toLocaleDateString('fa-IR', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+      } catch(e) {
+        el.textContent = new Date().toLocaleDateString('fa-IR');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      updateCurrentDate();
+      addRow();
+    });
+  </script>
+</body>
+</html>
